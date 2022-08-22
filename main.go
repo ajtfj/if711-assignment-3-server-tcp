@@ -31,13 +31,16 @@ func HandleTCPConnection(conn net.Conn) {
 	var requesPayload RequestPayload
 	for {
 		if err := decoder.Decode(&requesPayload); err != nil && err.Error() == "EOF" {
-			encodeError(encoder, err)
+			log.Printf("closing connection with %s", conn.RemoteAddr())
+			return
 		}
+		log.Printf("payload received from client %s: %v", conn.RemoteAddr(), requesPayload)
 
 		startTime := time.Now()
 		path, err := g.ShortestPath(requesPayload.Ori, requesPayload.Dest)
 		if err != nil {
-			encodeError(encoder, err)
+			encodeError(conn, encoder, err)
+			continue
 		}
 		duration := time.Since(startTime)
 
@@ -45,8 +48,10 @@ func HandleTCPConnection(conn net.Conn) {
 			Path:         path,
 			CalcDuration: duration,
 		}
+		log.Printf("sending payload to client %s: %v", conn.RemoteAddr(), responsePayload)
 		if err := encoder.Encode(responsePayload); err != nil {
-			encodeError(encoder, err)
+			encodeError(conn, encoder, err)
+			continue
 		}
 	}
 }
@@ -143,10 +148,11 @@ func closeTCPConnection(conn net.Conn) {
 	}
 }
 
-func encodeError(encoder *json.Encoder, err error) {
+func encodeError(conn net.Conn, encoder *json.Encoder, err error) {
 	payload := ResponseErrorPayload{
 		Message: err.Error(),
 	}
+	log.Printf("sending error to client %s: %v", conn.RemoteAddr(), err)
 	if err := encoder.Encode(payload); err != nil {
 		log.Fatal(err)
 	}
