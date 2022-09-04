@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ajtfj/graph"
 )
@@ -36,17 +35,14 @@ func HandleTCPConnection(conn net.Conn) {
 		}
 		log.Printf("payload received from client %s: %v", conn.RemoteAddr(), requesPayload)
 
-		startTime := time.Now()
 		path, err := g.ShortestPath(requesPayload.Ori, requesPayload.Dest)
 		if err != nil {
 			encodeError(conn, encoder, err)
 			continue
 		}
-		duration := time.Since(startTime)
 
 		responsePayload := ResponsePayload{
-			Path:         path,
-			CalcDuration: duration,
+			Path: path,
 		}
 		log.Printf("sending payload to client %s: %v", conn.RemoteAddr(), responsePayload)
 		if err := encoder.Encode(responsePayload); err != nil {
@@ -133,8 +129,7 @@ type RequestPayload struct {
 }
 
 type ResponsePayload struct {
-	Path         []graph.Node  `json:"path"`
-	CalcDuration time.Duration `json:"calc-duration"`
+	Path []graph.Node `json:"path"`
 }
 
 type ResponseErrorPayload struct {
